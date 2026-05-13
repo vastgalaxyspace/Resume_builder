@@ -1,5 +1,6 @@
 import { CheckCircle2, Loader2, Circle, Radio } from 'lucide-react';
 import { Moon } from 'lucide-react';
+import Link from 'next/link';
 
 export function ProcessingScreen() {
   const steps = [
@@ -12,11 +13,11 @@ export function ProcessingScreen() {
 
   return (
     <div className="min-h-[800px] bg-[#0A0A0F]">
-      <nav className="border-b border-[#1E1E2E] px-8 py-4 flex items-center justify-between">
+      <nav className="flex items-center justify-between gap-4 border-b border-[#1E1E2E] px-4 py-4 md:px-8">
         <div className="flex items-center gap-4">
-          <h2 className="bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] bg-clip-text text-transparent">
+          <Link href="/" className="bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] bg-clip-text text-xl font-medium text-transparent">
             Resume IQ
-          </h2>
+          </Link>
           <div className="px-3 py-1 rounded-full bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] text-xs text-[#8888A0]">
             AI-Powered · Live Market Data
           </div>
@@ -107,6 +108,9 @@ export function ProcessingScreen() {
             </div>
 
             <p className="text-center text-sm text-[#44445A]">Usually takes 20–30 seconds</p>
+            <Link href="/results" className="mt-6 block w-full rounded-lg border border-[#1E1E2E] bg-[#111118] px-4 py-3 text-center text-sm text-[#8888A0] transition-all duration-200 hover:border-[#4F8EF7] hover:text-[#F0F0F5]">
+              View sample results
+            </Link>
           </div>
         </div>
       </div>

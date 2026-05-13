@@ -2,23 +2,23 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const siteName = "Resume Build";
+const siteName = "ResumeIQ";
 const description =
-  "A fast, SEO-friendly Next.js website foundation for building a polished resume and portfolio presence.";
+  "AI-powered resume analysis that compares your resume against live market requirements and highlights the gaps to fix.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${siteName} | SEO Friendly Next.js Website`,
+    default: `${siteName} | AI Resume Analyzer`,
     template: `%s | ${siteName}`,
   },
   description,
   applicationName: siteName,
   keywords: [
-    "resume builder",
-    "portfolio website",
-    "Next.js website",
-    "SEO friendly website",
+    "resume analyzer",
+    "AI resume review",
+    "ATS score",
+    "job requirements",
     "professional resume",
   ],
   authors: [{ name: siteName }],
@@ -31,12 +31,12 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "/",
     siteName,
-    title: `${siteName} | SEO Friendly Next.js Website`,
+    title: `${siteName} | AI Resume Analyzer`,
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteName} | SEO Friendly Next.js Website`,
+    title: `${siteName} | AI Resume Analyzer`,
     description,
   },
   robots: {
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f766e",
+  themeColor: "#0A0A0F",
 };
 
 export default function RootLayout({

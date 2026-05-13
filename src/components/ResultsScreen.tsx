@@ -1,4 +1,5 @@
 import { Download, RefreshCw, AlertTriangle, Sparkles, Target, CheckCircle2, Moon } from 'lucide-react';
+import Link from 'next/link';
 
 export function ResultsScreen() {
   const criticalMissing = ['MLflow', 'Kubernetes', 'Spark', 'Airflow'];
@@ -51,11 +52,11 @@ export function ResultsScreen() {
 
   return (
     <div className="min-h-[1200px] bg-[#0A0A0F]">
-      <nav className="border-b border-[#1E1E2E] px-8 py-4 flex items-center justify-between">
+      <nav className="flex items-center justify-between gap-4 border-b border-[#1E1E2E] px-4 py-4 md:px-8">
         <div className="flex items-center gap-4">
-          <h2 className="bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] bg-clip-text text-transparent">
+          <Link href="/" className="bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] bg-clip-text text-xl font-medium text-transparent">
             Resume IQ
-          </h2>
+          </Link>
           <div className="px-3 py-1 rounded-full bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] text-xs text-[#8888A0]">
             AI-Powered · Live Market Data
           </div>
@@ -65,28 +66,28 @@ export function ResultsScreen() {
         </button>
       </nav>
 
-      <div className="bg-[#111118] border-b border-[#1E1E2E] px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 border-b border-[#1E1E2E] bg-[#111118] px-4 py-4 lg:flex-row lg:items-center lg:justify-between md:px-8">
+        <div className="flex flex-wrap items-center gap-4">
           <h3 className="text-[#F0F0F5]">Resume Analysis</h3>
           <div className="px-3 py-1 rounded-full bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] text-xs text-[#8888A0]">
             Senior ML Engineer at Google
           </div>
           <span className="text-sm text-[#44445A]">May 12, 2026 14:23</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button className="px-4 py-2 rounded-lg bg-transparent border border-[#1E1E2E] text-[#8888A0] hover:border-[#4F8EF7] hover:text-[#F0F0F5] transition-all duration-200 flex items-center gap-2">
             <Download size={16} />
             Download Report
           </button>
-          <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] text-[#F0F0F5] hover:shadow-[0_0_24px_rgba(79,142,247,0.3)] transition-all duration-200 flex items-center gap-2">
+          <Link href="/" className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] text-[#F0F0F5] hover:shadow-[0_0_24px_rgba(79,142,247,0.3)] transition-all duration-200 flex items-center gap-2">
             <RefreshCw size={16} />
             Analyze Another
-          </button>
+          </Link>
         </div>
       </div>
 
-      <div className="px-8 py-8">
-        <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="px-4 py-8 md:px-8">
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] p-6 hover:-translate-y-0.5 hover:shadow-[0_4px_24px_rgba(79,142,247,0.15)] transition-all duration-200">
             <div className="text-sm text-[#8888A0] mb-2">ATS Score</div>
             <div className="flex items-center gap-4">
@@ -143,7 +144,7 @@ export function ResultsScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="space-y-6">
             <div className="rounded-2xl bg-[rgba(239,68,68,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] overflow-hidden hover:-translate-y-0.5 transition-all duration-200">
               <div className="bg-[rgba(239,68,68,0.05)] border-b border-[#1E1E2E] px-6 py-3 flex items-center gap-2">

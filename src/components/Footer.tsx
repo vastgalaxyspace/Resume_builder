@@ -1,4 +1,5 @@
-import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import { FaGithub, FaTwitter, FaLinkedin } from 'react-icons/fa';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -24,19 +25,19 @@ export function Footer() {
                 href="#"
                 className="w-10 h-10 rounded-lg bg-[#111118] border border-[#1E1E2E] flex items-center justify-center hover:border-[#4F8EF7] hover:bg-[#1A1A24] transition-all duration-200"
               >
-                <Twitter size={18} className="text-[#8888A0]" />
+                <FaTwitter size={18} className="text-[#8888A0]" />
               </a>
               <a
                 href="#"
                 className="w-10 h-10 rounded-lg bg-[#111118] border border-[#1E1E2E] flex items-center justify-center hover:border-[#4F8EF7] hover:bg-[#1A1A24] transition-all duration-200"
               >
-                <Linkedin size={18} className="text-[#8888A0]" />
+                <FaLinkedin size={18} className="text-[#8888A0]" />
               </a>
               <a
                 href="#"
                 className="w-10 h-10 rounded-lg bg-[#111118] border border-[#1E1E2E] flex items-center justify-center hover:border-[#4F8EF7] hover:bg-[#1A1A24] transition-all duration-200"
               >
-                <Github size={18} className="text-[#8888A0]" />
+                <FaGithub size={18} className="text-[#8888A0]" />
               </a>
               <a
                 href="#"
