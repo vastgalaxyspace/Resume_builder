@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { AuthProvider } from "@/context/AuthContext";
+import { AnalysisProvider } from "@/context/AnalysisContext";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -65,7 +67,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          <AnalysisProvider>{children}</AnalysisProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

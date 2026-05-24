@@ -1,9 +1,7 @@
-import { ColorPalette } from "@/components/ColorPalette";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { ProcessingScreen } from "@/components/ProcessingScreen";
-import { ResultsScreen } from "@/components/ResultsScreen";
-import { UploadScreen } from "@/components/UploadScreen";
+import { ColorPalette } from "@/components/ColorPalette";
+import Link from "next/link";
 
 export default function ShowcasePage() {
   return (
@@ -21,15 +19,34 @@ export default function ShowcasePage() {
 
           <div className="space-y-16">
             <ShowcasePanel label="01 Upload">
-              <UploadScreen />
+              <div className="rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[rgba(79,142,247,0.1)] flex items-center justify-center">
+                  <span className="text-[#4F8EF7] text-2xl">📄</span>
+                </div>
+                <h3 className="text-xl text-[#F0F0F5] mb-2">Upload Screen</h3>
+                <p className="text-[#8888A0] mb-4">Drag-and-drop resume upload with role selection and experience level picker.</p>
+                <Link href="/" className="inline-block px-6 py-2 rounded-lg bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] text-[#F0F0F5] text-sm">Try it live →</Link>
+              </div>
             </ShowcasePanel>
 
             <ShowcasePanel label="02 Processing">
-              <ProcessingScreen />
+              <div className="rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[rgba(79,142,247,0.1)] flex items-center justify-center">
+                  <span className="text-[#4F8EF7] text-2xl">⚙️</span>
+                </div>
+                <h3 className="text-xl text-[#F0F0F5] mb-2">Processing Screen</h3>
+                <p className="text-[#8888A0] mb-4">Real-time progress tracking with animated steps — parsing, searching, analyzing.</p>
+              </div>
             </ShowcasePanel>
 
             <ShowcasePanel label="03 Results">
-              <ResultsScreen />
+              <div className="rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] p-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[rgba(79,142,247,0.1)] flex items-center justify-center">
+                  <span className="text-[#4F8EF7] text-2xl">📊</span>
+                </div>
+                <h3 className="text-xl text-[#F0F0F5] mb-2">Results Dashboard</h3>
+                <p className="text-[#8888A0] mb-4">Dynamic ATS score, skills gap analysis, improvement suggestions, bullet rewrites.</p>
+              </div>
             </ShowcasePanel>
           </div>
 
