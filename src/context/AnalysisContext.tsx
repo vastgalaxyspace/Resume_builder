@@ -44,6 +44,30 @@ export interface Improvement {
 export interface AnalysisResult {
   atsScore: number;
   atsLabel: string;
+  scoreBreakdown?: {
+    atsKeywordAndFormat: number;
+    tableStakesCoverage: number;
+    evidenceStrength: number;
+    projectExperienceRelevance: number;
+  };
+  marketBenchmark?: {
+    seniority: string;
+    tableStakes: string[];
+    differentiators: string[];
+    niceToHave: string[];
+    notes: string;
+  };
+  atsReasoning?: {
+    keywordMatchSummary: string;
+    formatSignals: string[];
+    parseRisks: string[];
+    exactKeywordGaps: string[];
+  };
+  recruiterReasoning?: {
+    strengths: string[];
+    concerns: string[];
+    seniorityFit: string;
+  };
   skillsMatched: string[];
   skillsMissing: string[];
   skillsNiceToHave: string[];

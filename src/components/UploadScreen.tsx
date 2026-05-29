@@ -56,6 +56,7 @@ export function UploadScreen() {
         <div className="flex items-center gap-4">
           <Link href="/" className="bg-gradient-to-r from-[#4F8EF7] to-[#7C5CFC] bg-clip-text text-xl font-medium text-transparent">Resume IQ</Link>
           <div className="px-3 py-1 rounded-full bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] border border-[#1E1E2E] text-xs text-[#8888A0]">AI-Powered · Live Market Data</div>
+          <Link href="/pricing" className="hidden text-sm text-[#8888A0] transition-colors hover:text-[#F0F0F5] md:block">Pricing</Link>
         </div>
         <AuthNavButton />
       </nav>

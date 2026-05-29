@@ -29,6 +29,9 @@ export function Header() {
               <Link href="/showcase" className="text-sm text-[#8888A0] hover:text-[#F0F0F5] transition-colors">
                 Showcase
               </Link>
+              <Link href="/pricing" className="text-sm text-[#8888A0] hover:text-[#F0F0F5] transition-colors">
+                Pricing
+              </Link>
             </nav>
           </div>
 

@@ -50,6 +50,35 @@ function downloadReport(r: AnalysisResult) {
   lines.push(`Date: ${new Date(r.analyzedAt).toLocaleString()}`, ``);
   lines.push(`ATS SCORE: ${r.atsScore}/100 (${r.atsLabel})`);
   lines.push(`Market Fit: ${r.marketFit}%`);
+  if (r.scoreBreakdown) {
+    lines.push(`SCORE BREAKDOWN:`);
+    lines.push(`  ATS keyword/format: ${r.scoreBreakdown.atsKeywordAndFormat}/30`);
+    lines.push(`  Table-stakes coverage: ${r.scoreBreakdown.tableStakesCoverage}/30`);
+    lines.push(`  Evidence strength: ${r.scoreBreakdown.evidenceStrength}/25`);
+    lines.push(`  Project/experience relevance: ${r.scoreBreakdown.projectExperienceRelevance}/15`, ``);
+  }
+  if (r.marketBenchmark) {
+    lines.push(`ROLE-TIER BENCHMARK:`);
+    lines.push(`  Seniority: ${r.marketBenchmark.seniority}`);
+    lines.push(`  Table stakes: ${r.marketBenchmark.tableStakes.join(', ') || 'None'}`);
+    lines.push(`  Differentiators: ${r.marketBenchmark.differentiators.join(', ') || 'None'}`);
+    lines.push(`  Nice to have: ${r.marketBenchmark.niceToHave.join(', ') || 'None'}`);
+    if (r.marketBenchmark.notes) lines.push(`  Notes: ${r.marketBenchmark.notes}`);
+    lines.push(``);
+  }
+  if (r.atsReasoning) {
+    lines.push(`ATS REASONING:`);
+    lines.push(`  ${r.atsReasoning.keywordMatchSummary || 'No ATS summary returned.'}`);
+    lines.push(`  Format signals: ${r.atsReasoning.formatSignals.join(', ') || 'None'}`);
+    lines.push(`  Parse risks: ${r.atsReasoning.parseRisks.join(', ') || 'None'}`);
+    lines.push(`  Exact keyword gaps: ${r.atsReasoning.exactKeywordGaps.join(', ') || 'None'}`, ``);
+  }
+  if (r.recruiterReasoning) {
+    lines.push(`RECRUITER REASONING:`);
+    lines.push(`  Strengths: ${r.recruiterReasoning.strengths.join(', ') || 'None'}`);
+    lines.push(`  Concerns: ${r.recruiterReasoning.concerns.join(', ') || 'None'}`);
+    lines.push(`  Seniority fit: ${r.recruiterReasoning.seniorityFit || 'Not provided.'}`, ``);
+  }
   lines.push(`Profile Strength: ${r.profileStrengthLabel} (${r.profileStrength}/4)`, ``);
   lines.push(`SKILLS MATCHED (${r.skillsMatched.length}):`, ...r.skillsMatched.map(s => `  ✓ ${s}`), ``);
   lines.push(`CRITICAL MISSING (${r.skillsMissing.length}):`, ...r.skillsMissing.map(s => `  ✗ ${s}`), ``);

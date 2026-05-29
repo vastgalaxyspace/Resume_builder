@@ -447,7 +447,9 @@ function buildAnalysisPrompt(
         : "Mid-level (2-5 years)";
   const jobDescriptions = formatMarketData(marketData);
 
-  return `Analyze the resume below against the target role "${role}" at ${experienceLabel} experience level. Use the live job market data provided to make your analysis current and accurate.
+  return `You are an expert ATS evaluator, technical recruiter, and resume writing coach.
+
+Analyze the resume below against the target role "${role}" at ${experienceLabel} experience level. Use the live job market data provided to make your analysis current and accurate.
 
 RESUME TEXT:
 ---
@@ -459,24 +461,93 @@ LIVE JOB MARKET DATA FOR "${role}":
 ${jobDescriptions.slice(0, 6000)}
 ---
 
-IMPORTANT INSTRUCTIONS:
-1. Compare the resume against the job requirements found in the market data.
-2. Be specific and actionable. Reference actual skills, technologies, and keywords from the job postings.
-3. Score fairly but critically. Most resumes should score between 40-85, not higher.
-4. Provide real before/after bullet point rewrites using content from the actual resume.
-5. Do not invent experience, employers, degrees, certifications, or measurable outcomes that are not supported by the resume.
-6. Treat a skill as "matched" only if it appears explicitly in the resume text or is directly proven by a listed project/experience bullet.
-7. Do not list senior-level tools as "critical missing" for entry-level candidates unless the market data repeatedly shows them as entry-level requirements.
-8. Separate true entry-level requirements from nice-to-have technologies.
-9. Never add numeric metrics, scale claims, uptime claims, concurrency claims, percentages, or business impact unless the resume text already contains them.
-10. If a rewrite would benefit from a metric but the resume lacks one, write a non-metric improvement instead.
-11. For every bullet rewrite, preserve the candidate's real project, employer, tools, and scope. Do not change Android work into backend service work unless the resume states that backend service existed.
+ANALYSIS PROCESS - follow these passes in order:
+
+PASS 1 - ROLE-TIER BENCHMARK
+Build a role-tier benchmark for "${role}" at ${experienceLabel} from the market data.
+Classify expected skills into:
+- tableStakes: skills/tools/sections typically required at this seniority.
+- differentiators: skills that improve competitiveness but are not baseline.
+- niceToHave: optional, adjacent, or senior-adjacent skills.
+Calibrate to seniority:
+- Entry-level: fundamentals, projects, internships, Git, REST/API basics, databases, testing basics, debugging, deployment basics, one primary stack.
+- Mid-level: production ownership, API design, testing depth, deployment, reliability, database design, code review, cross-team work.
+- Senior: architecture, scale, observability, distributed systems, mentorship, technical leadership, tradeoff decisions, production incident ownership.
+
+PASS 2 - EVIDENCE EXTRACTION
+Extract exact evidence from the resume. Treat a skill as matched only if it appears explicitly in the resume text or is directly proven by a listed project/experience bullet.
+Do not infer tools from vague phrases. Do not count "cloud technologies" as AWS/Azure/GCP depth unless concrete work is described.
+
+PASS 3 - ATS PARSING AND KEYWORD REASONING
+Analyze separately how ATS systems would parse this resume:
+- exact keyword matches for the target role.
+- section headers and whether important sections are present.
+- formatting/parse risks.
+- missing exact terms that ATS is likely to expect.
+- whether matched terms appear in high-value sections such as Skills, Projects, and Experience.
+
+PASS 4 - HUMAN RECRUITER REASONING
+Analyze recruiter concerns separately from ATS:
+- credibility of claims.
+- relevance of experience to the role.
+- project depth.
+- seniority fit.
+- clarity, specificity, and impact.
+
+PASS 5 - SCORE CALIBRATION
+Score against the selected seniority only. A 70 for entry-level is not the same as a 70 for senior.
+Use this weighting:
+- ATS keyword/format match: 30%
+- Role-tier table stakes coverage: 30%
+- Evidence strength and credibility: 25%
+- Project/experience relevance: 15%
+Most real resumes should score 35-85. Scores above 85 require strong evidence across nearly all tableStakes.
+
+PASS 6 - BULLET REWRITE RULES
+Every rewrite must follow this formula where possible:
+[Action verb] + [what the candidate did] + [technology/method used] + [specific result or scope].
+If the resume does not contain a real metric, do not invent one. Use scope or outcome without numbers.
+Never add numeric metrics, scale claims, uptime claims, concurrency claims, percentages, revenue, latency, or business impact unless already present in the resume.
+Preserve the candidate's real project, employer, tools, and scope. Do not convert one type of work into another unless the resume states it.
+
+STRICT QUALITY RULES:
+1. Be specific and actionable. Reference actual skills, technologies, and keywords from the market data.
+2. Do not invent experience, employers, degrees, certifications, projects, tools, metrics, or outcomes.
+3. skillsMissing must contain only true table-stakes gaps for the selected seniority.
+4. skillsNiceToHave must contain optional, differentiator, or senior-adjacent skills.
+5. If a skill is absent from the resume but not table-stakes for the seniority, place it in skillsNiceToHave, not skillsMissing.
+6. Keep entry-level missing skills focused on fundamentals. Do not list senior infrastructure, observability, distributed systems, AI/ML, payment systems, or high-scale architecture as critical unless market data explicitly requires them for entry-level.
+7. If market data is noisy or from another geography/seniority, reduce its influence and say so in marketBenchmark.notes.
 
 Respond with a valid JSON object matching this exact schema:
 
 {
   "atsScore": <number 0-100>,
   "atsLabel": "<string: 'Excellent Match' if >=80, 'Good Match' if >=60, 'Needs Work' if >=40, 'Poor Match' if <40>",
+  "scoreBreakdown": {
+    "atsKeywordAndFormat": <number 0-30>,
+    "tableStakesCoverage": <number 0-30>,
+    "evidenceStrength": <number 0-25>,
+    "projectExperienceRelevance": <number 0-15>
+  },
+  "marketBenchmark": {
+    "seniority": "${experienceLabel}",
+    "tableStakes": ["<required skill for this seniority>"],
+    "differentiators": ["<competitive but not baseline skill>"],
+    "niceToHave": ["<optional skill>"],
+    "notes": "<1-2 sentences about benchmark/source quality>"
+  },
+  "atsReasoning": {
+    "keywordMatchSummary": "<short ATS-specific summary>",
+    "formatSignals": ["<section/header/format signal>"],
+    "parseRisks": ["<ATS parse risk or 'None found'>"],
+    "exactKeywordGaps": ["<exact keyword gap>"]
+  },
+  "recruiterReasoning": {
+    "strengths": ["<human recruiter strength>"],
+    "concerns": ["<human recruiter concern>"],
+    "seniorityFit": "<why the resume fits or misses ${experienceLabel}>"
+  },
   "skillsMatched": ["<skill1>", "<skill2>"],
   "skillsMissing": ["<entry-level critical missing skill only>"],
   "skillsNiceToHave": ["<optional or senior-adjacent skill>"],
@@ -497,8 +568,6 @@ Respond with a valid JSON object matching this exact schema:
   "keywordGaps": ["<entry-level keyword recruiters/ATS expect but resume lacks>"],
   "priorityActions": ["<highest impact next action>"]
 }
-
-For entry-level analysis, keep skillsMissing focused on fundamentals such as Git, REST APIs, SQL/NoSQL depth, testing, debugging, deployment, authentication, and one primary backend framework. Put advanced infrastructure, observability, distributed systems, AI/ML, payment systems, and high-scale architecture in skillsNiceToHave unless the target role explicitly requires them.
 
 Provide at least 5 improvements, 3 bullet rewrites, 5 resume sections analyzed, 5 keyword gaps, and 3 priority actions.`;
 }
@@ -525,6 +594,10 @@ function normalizeAnalysisResult(value: unknown): Record<string, unknown> {
   result.atsLabel = String(result.atsLabel ?? labelForScore(result.atsScore as number));
   result.profileStrengthLabel = String(result.profileStrengthLabel ?? "Needs Work");
   result.overallAssessment = String(result.overallAssessment ?? "Analysis completed, but the model returned a sparse assessment.");
+  result.scoreBreakdown = normalizeScoreBreakdown(result.scoreBreakdown);
+  result.marketBenchmark = normalizeMarketBenchmark(result.marketBenchmark);
+  result.atsReasoning = normalizeAtsReasoning(result.atsReasoning);
+  result.recruiterReasoning = normalizeRecruiterReasoning(result.recruiterReasoning);
   result.skillsMatched = normalizeStringArray(result.skillsMatched);
   result.skillsMissing = normalizeStringArray(result.skillsMissing);
   result.skillsNiceToHave = normalizeStringArray(result.skillsNiceToHave);
@@ -539,6 +612,46 @@ function normalizeAnalysisResult(value: unknown): Record<string, unknown> {
   result.rewrites = normalizeObjects(result.rewrites, ["before", "after", "why"]);
 
   return result;
+}
+
+function normalizeScoreBreakdown(value: unknown) {
+  const input = isRecord(value) ? value : {};
+  return {
+    atsKeywordAndFormat: clampNumber(input.atsKeywordAndFormat, 0, 30, 0),
+    tableStakesCoverage: clampNumber(input.tableStakesCoverage, 0, 30, 0),
+    evidenceStrength: clampNumber(input.evidenceStrength, 0, 25, 0),
+    projectExperienceRelevance: clampNumber(input.projectExperienceRelevance, 0, 15, 0),
+  };
+}
+
+function normalizeMarketBenchmark(value: unknown) {
+  const input = isRecord(value) ? value : {};
+  return {
+    seniority: String(input.seniority ?? ""),
+    tableStakes: normalizeStringArray(input.tableStakes),
+    differentiators: normalizeStringArray(input.differentiators),
+    niceToHave: normalizeStringArray(input.niceToHave),
+    notes: String(input.notes ?? "").trim(),
+  };
+}
+
+function normalizeAtsReasoning(value: unknown) {
+  const input = isRecord(value) ? value : {};
+  return {
+    keywordMatchSummary: String(input.keywordMatchSummary ?? "").trim(),
+    formatSignals: normalizeStringArray(input.formatSignals),
+    parseRisks: normalizeStringArray(input.parseRisks),
+    exactKeywordGaps: normalizeStringArray(input.exactKeywordGaps),
+  };
+}
+
+function normalizeRecruiterReasoning(value: unknown) {
+  const input = isRecord(value) ? value : {};
+  return {
+    strengths: normalizeStringArray(input.strengths),
+    concerns: normalizeStringArray(input.concerns),
+    seniorityFit: String(input.seniorityFit ?? "").trim(),
+  };
 }
 
 function normalizeExperience(value: string | null): ExperienceLevel {
