@@ -90,6 +90,9 @@ export interface AnalysisResult {
     title: string;
     url: string;
     content: string;
+    category?: "job_board" | "company_careers" | "fallback_web";
+    qualityScore?: number;
+    sourceLabel?: string;
   }>;
   role: string;
   experience: string;

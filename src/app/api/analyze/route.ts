@@ -31,10 +31,28 @@ type JobMarketData = {
     title: string;
     url: string;
     content: string;
+    category: SourceCategory;
+    qualityScore: number;
+    sourceLabel: string;
     score?: number;
     rawContent?: string;
   }>;
 };
+
+type SourceCategory = "job_board" | "company_careers" | "fallback_web";
+
+type Region = "india" | "global";
+
+type SearchStrategy = {
+  label: string;
+  category: SourceCategory;
+  query: string;
+  topic: string;
+  time_range: string;
+  includeDomains?: string[];
+};
+
+type JobSourceMode = "priority" | "strict";
 
 type TavilySearchResult = {
   title?: unknown;
@@ -60,6 +78,95 @@ type AnalysisPayload = Record<string, unknown> & {
   };
   marketSources: JobMarketData["sources"];
 };
+
+const PRIMARY_JOB_BOARD_DOMAINS = [
+  "linkedin.com",
+  "naukri.com",
+  "indeed.com",
+  "glassdoor.com",
+  "glassdoor.co.in",
+];
+
+const INDIA_JOB_BOARD_DOMAINS = [
+  "foundit.in",
+  "monsterindia.com",
+  "instahyre.com",
+  "hirist.tech",
+  "cutshort.io",
+  "timesjobs.com",
+  "shine.com",
+  "iimjobs.com",
+];
+
+const GLOBAL_JOB_BOARD_DOMAINS = [
+  "wellfound.com",
+  "monster.com",
+  "dice.com",
+  "ziprecruiter.com",
+  "simplyhired.com",
+];
+
+const MNC_CAREER_DOMAINS = [
+  "google.com",
+  "microsoft.com",
+  "amazon.jobs",
+  "accenture.com",
+  "tcs.com",
+  "infosys.com",
+  "wipro.com",
+  "ibm.com",
+  "oracle.com",
+  "deloitte.com",
+  "capgemini.com",
+  "cognizant.com",
+  "hcltech.com",
+  "techmahindra.com",
+];
+
+const JOB_PATH_PATTERNS = [
+  "/jobs",
+  "/job",
+  "/careers",
+  "/career",
+  "/job-detail",
+  "/job-listing",
+  "/viewjob",
+  "/jobs/view",
+  "/positions",
+  "/opening",
+  "/opportunities",
+];
+
+const JD_SIGNAL_TERMS = [
+  "responsibilities",
+  "requirements",
+  "qualifications",
+  "skills",
+  "experience",
+  "location",
+  "apply",
+  "job description",
+  "what you will do",
+  "preferred qualifications",
+  "minimum qualifications",
+  "about the role",
+];
+
+const NOISY_SOURCE_TERMS = [
+  "resume keywords",
+  "sample resume",
+  "resume examples",
+  "interview questions",
+  "salary",
+  "course",
+  "template",
+  "blog",
+  "career advice",
+  "how to write",
+];
+
+const SPARSE_SOURCE_NOTES =
+  "Preferred job-board or official-career-page results were sparse, so fallback web sources may have been used only to fill gaps.";
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,10 +231,13 @@ export async function POST(request: NextRequest) {
         characters: extraction.text.length,
         ...(extraction.warning ? { warning: extraction.warning } : {}),
       },
-      marketSources: marketData.sources.map(({ title, url, content }) => ({
+      marketSources: marketData.sources.map(({ title, url, content, category, qualityScore, sourceLabel }) => ({
         title,
         url,
         content: content.slice(0, 280),
+        category,
+        qualityScore,
+        sourceLabel,
       })),
     } satisfies AnalysisPayload);
   } catch (err: unknown) {
@@ -260,34 +370,35 @@ async function searchJobDescriptions(
   }
 
   const experienceLabel = experience === "entry" ? "entry level junior" : experience;
-  const searches = [
-    {
-      label: "Current entry-level job descriptions",
-      query: `${experienceLabel} ${role} job description required skills responsibilities qualifications ATS keywords`,
-      topic: "general",
-      time_range: "month",
-    },
-    {
-      label: "Entry-level hiring expectations",
-      query: `${experienceLabel} ${role} hiring requirements technical skills projects testing database API`,
-      topic: "general",
-      time_range: "year",
-    },
-    {
-      label: "Resume keyword benchmarks",
-      query: `${experienceLabel} ${role} resume keywords ATS screening skills projects requirements`,
-      topic: "general",
-      time_range: "year",
-    },
+  const sourceMode = normalizeJobSourceMode(process.env.JOB_SOURCE_MODE);
+  const region = inferMarketRegion(role);
+  const minPreferredSources = normalizeMinPreferredSources(process.env.JOB_MIN_PREFERRED_SOURCES);
+  const customIncludeDomains = [
+    ...parseCsvEnv(process.env.JOB_INCLUDE_DOMAINS),
+    ...parseCsvEnv(process.env.TAVILY_INCLUDE_DOMAINS),
+  ];
+  const excludeDomains = [
+    ...parseCsvEnv(process.env.JOB_EXCLUDE_DOMAINS),
+    ...parseCsvEnv(process.env.TAVILY_EXCLUDE_DOMAINS),
   ];
 
+  const preferredSearches = buildPreferredSearchStrategies(
+    role,
+    experienceLabel,
+    region,
+    customIncludeDomains
+  );
+
   const responses = await Promise.all(
-    searches.map(async (search) => ({
+    preferredSearches.map(async (search) => ({
       label: search.label,
+      category: search.category,
       data: await searchTavily(apiKey, {
         query: search.query,
         topic: search.topic,
         time_range: search.time_range,
+        includeDomains: search.includeDomains,
+        excludeDomains,
       }),
     }))
   );
@@ -295,6 +406,51 @@ async function searchJobDescriptions(
   const sourcesByUrl = new Map<string, JobMarketData["sources"][number]>();
   const answerParts: string[] = [];
 
+  collectTavilyResponses(responses, sourcesByUrl, answerParts);
+
+  const preferredSources = Array.from(sourcesByUrl.values()).filter((source) =>
+    isUsefulJobSource(source)
+  );
+
+  if (sourceMode === "priority" && preferredSources.length < minPreferredSources) {
+    const fallbackSearches = buildFallbackSearchStrategies(role, experienceLabel);
+    const fallbackResponses = await Promise.all(
+      fallbackSearches.map(async (search) => ({
+        label: search.label,
+        category: search.category,
+        data: await searchTavily(apiKey, {
+          query: search.query,
+          topic: search.topic,
+          time_range: search.time_range,
+          excludeDomains,
+        }),
+      }))
+    );
+
+    answerParts.push(SPARSE_SOURCE_NOTES);
+    collectTavilyResponses(fallbackResponses, sourcesByUrl, answerParts);
+  }
+
+  const sources = Array.from(sourcesByUrl.values())
+    .filter(isUsefulJobSource)
+    .sort(compareJobSources)
+    .slice(0, 12);
+
+  return {
+    summary: answerParts.join("\n\n") || "No market summary returned.",
+    sources,
+  };
+}
+
+function collectTavilyResponses(
+  responses: Array<{
+    label: string;
+    category: SourceCategory;
+    data: TavilySearchResponse;
+  }>,
+  sourcesByUrl: Map<string, JobMarketData["sources"][number]>,
+  answerParts: string[]
+) {
   for (const response of responses) {
     if (typeof response.data.answer === "string" && response.data.answer.trim()) {
       answerParts.push(`${response.label}: ${response.data.answer.trim()}`);
@@ -306,29 +462,194 @@ async function searchJobDescriptions(
       const url = String(result.url ?? "").trim();
       if (!url || sourcesByUrl.has(url)) continue;
 
+      const title = String(result.title ?? "Untitled job source");
+      const content = cleanTavilyContent(String(result.content ?? ""));
+      const rawContent = cleanTavilyContent(String(result.raw_content ?? ""));
+      const tavilyScore = Number.isFinite(Number(result.score)) ? Number(result.score) : undefined;
+
       sourcesByUrl.set(url, {
-        title: String(result.title ?? "Untitled job source"),
+        title,
         url,
-        content: cleanTavilyContent(String(result.content ?? "")),
-        rawContent: cleanTavilyContent(String(result.raw_content ?? "")),
-        score: Number.isFinite(Number(result.score)) ? Number(result.score) : undefined,
+        content,
+        rawContent,
+        category: response.category,
+        qualityScore: scoreJobSource({
+          title,
+          url,
+          content,
+          rawContent,
+          category: response.category,
+          tavilyScore,
+        }),
+        sourceLabel: response.label,
+        score: tavilyScore,
       });
     }
   }
+}
 
-  const sources = Array.from(sourcesByUrl.values())
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .slice(0, 12);
+function buildPreferredSearchStrategies(
+  role: string,
+  experienceLabel: string,
+  region: Region,
+  customIncludeDomains: string[]
+): SearchStrategy[] {
+  const additionalJobBoards =
+    region === "india" ? INDIA_JOB_BOARD_DOMAINS : GLOBAL_JOB_BOARD_DOMAINS;
+  const regionLabel = region === "india" ? "India" : "global remote";
 
-  return {
-    summary: answerParts.join("\n\n") || "No market summary returned.",
-    sources,
+  return [
+    {
+      label: "Trusted job boards: LinkedIn, Naukri, Indeed, Glassdoor",
+      category: "job_board",
+      query: `${experienceLabel} ${role} ${regionLabel} job description responsibilities requirements qualifications skills apply`,
+      topic: "general",
+      time_range: "month",
+      includeDomains: [...PRIMARY_JOB_BOARD_DOMAINS, ...customIncludeDomains],
+    },
+    {
+      label: "Additional high-signal job boards",
+      category: "job_board",
+      query: `${experienceLabel} ${role} ${regionLabel} job opening required skills responsibilities qualifications`,
+      topic: "general",
+      time_range: "month",
+      includeDomains: [...additionalJobBoards, ...customIncludeDomains],
+    },
+    {
+      label: "Official MNC career pages",
+      category: "company_careers",
+      query: `${experienceLabel} ${role} ${regionLabel} official careers job description requirements responsibilities`,
+      topic: "general",
+      time_range: "month",
+      includeDomains: [...MNC_CAREER_DOMAINS, ...customIncludeDomains],
+    },
+  ];
+}
+
+function buildFallbackSearchStrategies(role: string, experienceLabel: string): SearchStrategy[] {
+  return [
+    {
+      label: "Fallback current job descriptions",
+      category: "fallback_web",
+      query: `${experienceLabel} ${role} job description required skills responsibilities qualifications`,
+      topic: "general",
+      time_range: "month",
+    },
+    {
+      label: "Fallback hiring expectations",
+      category: "fallback_web",
+      query: `${experienceLabel} ${role} hiring requirements technical skills projects testing database API`,
+      topic: "general",
+      time_range: "year",
+    },
+  ];
+}
+
+function inferMarketRegion(role: string): Region {
+  const configured = process.env.JOB_MARKET_DEFAULT_REGION?.trim().toLowerCase();
+  const roleText = role.toLowerCase();
+  const globalSignals = [
+    " usa",
+    " u.s.",
+    " united states",
+    " uk",
+    " united kingdom",
+    " europe",
+    " canada",
+    " australia",
+    " germany",
+    " singapore",
+    " dubai",
+    " uae",
+    " global",
+  ];
+
+  if (roleText.includes("india") || roleText.includes("bangalore") || roleText.includes("bengaluru")) {
+    return "india";
+  }
+
+  if (globalSignals.some((signal) => roleText.includes(signal))) {
+    return "global";
+  }
+
+  return configured === "global" ? "global" : "india";
+}
+
+function normalizeJobSourceMode(value: string | undefined): JobSourceMode {
+  return value?.trim().toLowerCase() === "strict" ? "strict" : "priority";
+}
+
+function normalizeMinPreferredSources(value: string | undefined): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 5;
+  return Math.min(12, Math.max(1, Math.round(parsed)));
+}
+
+function scoreJobSource(source: {
+  title: string;
+  url: string;
+  content: string;
+  rawContent: string;
+  category: SourceCategory;
+  tavilyScore?: number;
+}): number {
+  const url = source.url.toLowerCase();
+  const title = source.title.toLowerCase();
+  const combinedContent = `${source.title} ${source.content} ${source.rawContent}`.toLowerCase();
+  const jdSignalCount = JD_SIGNAL_TERMS.filter((term) => combinedContent.includes(term)).length;
+  const hasJobPath = JOB_PATH_PATTERNS.some((pattern) => url.includes(pattern));
+  const noisySignalCount = NOISY_SOURCE_TERMS.filter(
+    (term) => combinedContent.includes(term) || title.includes(term) || url.includes(term)
+  ).length;
+  const trustedDomainBonus = source.category === "fallback_web" ? 0 : 3;
+  const categoryBonus = source.category === "company_careers" ? 2 : source.category === "job_board" ? 1 : 0;
+  const contentDepthBonus = combinedContent.length > 900 ? 2 : combinedContent.length > 300 ? 1 : 0;
+  const tavilyBonus = source.tavilyScore ? Math.min(2, Math.max(0, source.tavilyScore * 2)) : 0;
+  const expiredPenalty = /\b(expired|closed|no longer accepting|not found)\b/.test(combinedContent) ? 4 : 0;
+
+  return Math.round(
+    trustedDomainBonus +
+      categoryBonus +
+      (hasJobPath ? 3 : 0) +
+      Math.min(6, jdSignalCount) +
+      contentDepthBonus +
+      tavilyBonus -
+      noisySignalCount * 2 -
+      expiredPenalty
+  );
+}
+
+function isUsefulJobSource(source: JobMarketData["sources"][number]): boolean {
+  if (source.category !== "fallback_web" && source.qualityScore >= 3) return true;
+  return source.qualityScore >= 5;
+}
+
+function compareJobSources(
+  a: JobMarketData["sources"][number],
+  b: JobMarketData["sources"][number]
+): number {
+  const categoryWeight: Record<SourceCategory, number> = {
+    job_board: 3,
+    company_careers: 3,
+    fallback_web: 1,
   };
+
+  return (
+    categoryWeight[b.category] - categoryWeight[a.category] ||
+    b.qualityScore - a.qualityScore ||
+    (b.score ?? 0) - (a.score ?? 0)
+  );
 }
 
 async function searchTavily(
   apiKey: string,
-  options: { query: string; topic: string; time_range: string }
+  options: {
+    query: string;
+    topic: string;
+    time_range: string;
+    includeDomains?: string[];
+    excludeDomains?: string[];
+  }
 ): Promise<TavilySearchResponse> {
   const body = {
     api_key: apiKey,
@@ -346,11 +667,11 @@ async function searchTavily(
     ...(options.topic === "general" && process.env.TAVILY_COUNTRY
       ? { country: process.env.TAVILY_COUNTRY.trim().toLowerCase() }
       : {}),
-    ...(parseCsvEnv(process.env.TAVILY_INCLUDE_DOMAINS).length
-      ? { include_domains: parseCsvEnv(process.env.TAVILY_INCLUDE_DOMAINS) }
+    ...(options.includeDomains?.length
+      ? { include_domains: uniqueStrings(options.includeDomains) }
       : {}),
-    ...(parseCsvEnv(process.env.TAVILY_EXCLUDE_DOMAINS).length
-      ? { exclude_domains: parseCsvEnv(process.env.TAVILY_EXCLUDE_DOMAINS) }
+    ...(options.excludeDomains?.length
+      ? { exclude_domains: uniqueStrings(options.excludeDomains) }
       : {}),
   };
 
@@ -375,6 +696,10 @@ function parseCsvEnv(value: string | undefined): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 /* ================================================================== */
@@ -460,6 +785,12 @@ LIVE JOB MARKET DATA FOR "${role}":
 ---
 ${jobDescriptions.slice(0, 6000)}
 ---
+
+SOURCE QUALITY RULES:
+- Treat job_board and company_careers sources as stronger evidence than fallback_web sources.
+- Use fallback_web sources only to fill gaps when trusted job boards or official career pages are sparse.
+- Ignore noisy blog, salary, interview-prep, resume-keyword, and generic advice content unless no real JD evidence is available.
+- If LinkedIn, Naukri, Indeed, Glassdoor, or official company career pages are sparse or weak, mention that limitation in marketBenchmark.notes.
 
 ANALYSIS PROCESS - follow these passes in order:
 
@@ -578,7 +909,7 @@ function formatMarketData(marketData: JobMarketData): string {
   for (const source of marketData.sources) {
     const rawContent = source.rawContent ? `\nRaw Content:\n${source.rawContent.slice(0, 900)}` : "";
     parts.push(
-      `Source: ${source.url}\nTitle: ${source.title}\nRelevance Score: ${source.score ?? "n/a"}\nSnippets:\n${source.content}${rawContent}`
+      `Source: ${source.url}\nTitle: ${source.title}\nSource Type: ${source.category}\nSource Group: ${source.sourceLabel}\nQuality Score: ${source.qualityScore}\nTavily Score: ${source.score ?? "n/a"}\nSnippets:\n${source.content}${rawContent}`
     );
   }
 

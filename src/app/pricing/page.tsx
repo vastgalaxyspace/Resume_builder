@@ -2,11 +2,13 @@ import Link from "next/link";
 
 import { PricingPlans } from "@/components/PricingPlans";
 
-export default function PricingPage({
+export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: { checkout?: string };
+  searchParams: Promise<{ checkout?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
+
   return (
     <main className="min-h-screen bg-[#0A0A0F] px-4 py-8 md:px-8">
       <nav className="mx-auto flex max-w-6xl items-center justify-between">
@@ -36,7 +38,7 @@ export default function PricingPage({
             Start free, then upgrade when you want unlimited analysis and deeper role-specific
             guidance.
           </p>
-          {searchParams.checkout === "cancelled" && (
+          {resolvedSearchParams.checkout === "cancelled" && (
             <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-4 py-3 text-sm text-[#FCD34D]">
               Checkout was cancelled. You can choose a plan whenever you are ready.
             </div>
